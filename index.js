@@ -1,4 +1,4 @@
-import { config } from 'dotenv';
+import { config } from "dotenv";
 import mysql from "mysql2/promise";
 import { ventas_offline, offline_tickets } from "./common.js";
 
@@ -123,5 +123,5 @@ async function procesarTickets() {
 }
 
 // Iniciar el procesamiento de ventas y tickets
-//procesarVentas().catch(console.error);
-procesarTickets().catch(console.error);
+procesarVentas().catch(console.error);
+//procesarTickets().catch(console.error);
