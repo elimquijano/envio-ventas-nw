@@ -1,6 +1,11 @@
 import { config } from "dotenv";
 import mysql from "mysql2/promise";
-import { ventas_offline, offline_tickets } from "./common.js";
+import {
+  ventas_offline,
+  offline_tickets,
+  open_cajas_offline,
+  close_cajas_offline,
+} from "./common.js";
 
 config();
 
@@ -106,6 +111,55 @@ async function insertTicket(ticket) {
   }
 }
 
+async function openCaja(caja) {
+  let conn;
+  try {
+    conn = await mysql.createConnection(dbConfig);
+    await conn.beginTransaction();
+
+    await conn.query(
+      `INSERT INTO cajas (id, user_id, opening_datetime, sms_sent_by_open_box, created_at, updated_at)
+       VALUES (?, ?, ?, 1, ?, ?)`,
+      [
+        caja.id,
+        caja.user_id,
+        caja.opening_datetime,
+        caja.opening_datetime,
+        caja.opening_datetime,
+      ]
+    );
+
+    await conn.commit();
+    console.log(`Caja ${caja.id} abierta correctamente`);
+  } catch (error) {
+    if (conn) await conn.rollback();
+    console.error(`Error al abrir caja ${caja.id}:`, error.message);
+  } finally {
+    if (conn) await conn.end();
+  }
+}
+
+async function closeCaja(caja) {
+  let conn;
+  try {
+    conn = await mysql.createConnection(dbConfig);
+    await conn.beginTransaction();
+
+    await conn.query(
+      `UPDATE cajas SET closing_datetime = ?, is_open = 0, sms_sent_by_close_box = 1, updated_at = ? WHERE id = ?`,
+      [caja.closing_datetime, caja.closing_datetime, caja.id]
+    );
+
+    await conn.commit();
+    console.log(`Caja ${caja.id} cerrada correctamente`);
+  } catch (error) {
+    if (conn) await conn.rollback();
+    console.error(`Error al cerrar caja ${caja.id}:`, error.message);
+  } finally {
+    if (conn) await conn.end();
+  }
+}
+
 // Procesar ventas secuencialmente
 async function procesarVentas() {
   for (const venta of ventas_offline) {
@@ -122,6 +176,22 @@ async function procesarTickets() {
   console.log("Proceso de tickets completado");
 }
 
+async function procesarAperturaDeCajas() {
+  for (const caja of open_cajas_offline) {
+    await openCaja(caja);
+  }
+  console.log("Proceso de apertura de cajas completado");
+}
+
+async function procesarCierreDeCajas() {
+  for (const caja of close_cajas_offline) {
+    await closeCaja(caja);
+  }
+  console.log("Proceso de cierre de cajas completado");
+}
+
 // Iniciar el procesamiento de ventas y tickets
 procesarVentas().catch(console.error);
 //procesarTickets().catch(console.error);
+//procesarAperturaDeCajas().catch(console.error);
+//procesarCierreDeCajas().catch(console.error);
